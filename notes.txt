@@ -1,0 +1,234 @@
+*******Loaders:
+
+Xtr_rgb:	(27000, 32, 32, 3)
+Ytr_mask:	(27000, 1024, 16)
+Ytr_pm:	(27000, 1024)
+Xte_rgb:	(3000, 32, 32, 3)
+Yte_mask:	(3000, 1024, 16)
+Yte_pm:	(3000, 1024)
+
+
+*******Solver:
+
+learning_rate:	0.001
+number_classes:	16
+num_epochs:		100
+batch_size:		32
+test_size:		32
+
+imgWidth/img_width:		32
+imgHeight/img_height:	32
+
+# placeholders
+ph_rgb:	Tensor("Placeholder:0", shape=(?, 32, 32, 3), dtype=float32)
+ph_mask:	Tensor("gt_mask:0", shape=(?, 1024, 16), dtype=float32)
+keep_prob_seg:	Tensor("keep_prob_seg:0", dtype=float32)
+
+# Network output:
+pre_logits:	Tensor("Reshape:0", shape=(?, 1024, 16), dtype=float32)
+seg_predictions:	Tensor("Reshape_18:0", shape=(?, 32, 32, 1), dtype=float32)
+
+# solver:
+cross_entropies:	Tensor("softmax_cross_entropy_with_logits_sg/Reshape_2:0", shape=(?, 1024), dtype=float32)
+cross_entropy_sum:	Tensor("Sum_1:0", shape=(), dtype=float32)
+
+optimizer:	<tensorflow.python.training.adam.AdamOptimizer object at 0x0000020B8541FC50>
+gradients:	__len__ = (int)32
+
+~~~~~~~
+train_seg:	name: "Adam"
+op: "NoOp"
+input: "^Adam/update_conv1_1/w/ApplyAdam"
+input: "^Adam/update_conv1_1/b/ApplyAdam"
+input: "^Adam/update_conv1_2/w/ApplyAdam"
+input: "^Adam/update_conv1_2/b/ApplyAdam"
+input: "^Adam/update_conv2_1/w/ApplyAdam"
+input: "^Adam/update_conv2_1/b/ApplyAdam"
+input: "^Adam/update_conv2_2/w/ApplyAdam"
+input: "^Adam/update_conv2_2/b/ApplyAdam"
+input: "^Adam/update_conv3_1/w/ApplyAdam"
+input: "^Adam/update_conv3_1/b/ApplyAdam"
+input: "^Adam/update_conv3_2/w/ApplyAdam"
+input: "^Adam/update_conv3_2/b/ApplyAdam"
+input: "^Adam/update_conv3_3/w/ApplyAdam"
+input: "^Adam/update_conv3_3/b/ApplyAdam"
+input: "^Adam/update_conv4_1/w/ApplyAdam"
+input: "^Adam/update_conv4_1/b/ApplyAdam"
+input: "^Adam/update_conv4_2/w/ApplyAdam"
+input: "^Adam/update_conv4_2/b/ApplyAdam"
+input: "^Adam/update_conv4_3/w/ApplyAdam"
+input: "^Adam/update_conv4_3/b/ApplyAdam"
+input: "^Adam/update_deconv5/decon_bilinear_filter/ApplyAdam"
+input: "^Adam/update_pw5/w/ApplyAdam"
+input: "^Adam/update_pw5/b/ApplyAdam"
+input: "^Adam/update_deconv6/decon_bilinear_filter/ApplyAdam"
+input: "^Adam/update_pw6/w/ApplyAdam"
+input: "^Adam/update_pw6/b/ApplyAdam"
+input: "^Adam/update_deconv7/decon_bilinear_filter/ApplyAdam"
+input: "^Adam/update_pw7/w/ApplyAdam"
+input: "^Adam/update_pw7/b/ApplyAdam"
+input: "^Adam/update_deconv8/decon_bilinear_filter/ApplyAdam"
+input: "^Adam/update_pw8/w/ApplyAdam"
+input: "^Adam/update_pw8/b/ApplyAdam"
+input: "^Adam/Assign"
+input: "^Adam/Assign_1"
+~~~~~~~
+
+~~~~~~~
+prediction:	Tensor("ArgMax_2:0", shape=(?, 1024), dtype=int64)
+~~~~~~~
+
+prediction_mask:	Tensor("Reshape_18:0", shape=(?, 32, 32, 1), dtype=float32)
+
+~~~~~~~
+probabilities:	Tensor("Softmax:0", shape=(?, 1024, 16), dtype=float32)
+~~~~~~~
+
+
+
+*******Model:
+number_of_classes:	16
+upscale:	2
+width:		32
+height:	32
+
+input_op:	Tensor("Placeholder:0", shape=(?, 32, 32, 3), dtype=float32)
+keep_prob_seg:	Tensor("keep_prob_seg:0", dtype=float32)
+
+# Convolution
+# block 1
+conv1_1 = {Tensor} Tensor("conv1_1:0", shape=(?, 32, 32, 64), dtype=float32)
+conv1_2 = {Tensor} Tensor("conv1_2:0", shape=(?, 32, 32, 64), dtype=float32)
+pool1 = {Tensor} Tensor("pool1:0", shape=(?, 16, 16, 64), dtype=float32)
+conv1_drop = {Tensor} Tensor("conv1_drop/mul:0", shape=(?, 16, 16, 64), dtype=float32)
+
+# block 2
+conv2_1 = {Tensor} Tensor("conv2_1:0", shape=(?, 16, 16, 128), dtype=float32)
+conv2_2 = {Tensor} Tensor("conv2_2:0", shape=(?, 16, 16, 128), dtype=float32)
+pool2 = {Tensor} Tensor("pool2:0", shape=(?, 8, 8, 128), dtype=float32)
+conv2_drop = {Tensor} Tensor("conv2_drop/mul:0", shape=(?, 8, 8, 128), dtype=float32)
+
+# block 3
+conv3_1 = {Tensor} Tensor("conv3_1:0", shape=(?, 8, 8, 256), dtype=float32)
+conv3_2 = {Tensor} Tensor("conv3_2:0", shape=(?, 8, 8, 256), dtype=float32)
+conv3_3 = {Tensor} Tensor("conv3_3:0", shape=(?, 8, 8, 256), dtype=float32)
+pool3 = {Tensor} Tensor("pool3:0", shape=(?, 4, 4, 256), dtype=float32)
+conv3_drop = {Tensor} Tensor("conv3_drop/mul:0", shape=(?, 4, 4, 256), dtype=float32)
+
+# block 4
+conv4_1 = {Tensor} Tensor("conv4_1:0", shape=(?, 4, 4, 512), dtype=float32)
+conv4_2 = {Tensor} Tensor("conv4_2:0", shape=(?, 4, 4, 512), dtype=float32)
+conv4_3 = {Tensor} Tensor("conv4_3:0", shape=(?, 4, 4, 512), dtype=float32)
+pool4 = {Tensor} Tensor("pool4:0", shape=(?, 2, 2, 512), dtype=float32)
+conv4_drop = {Tensor} Tensor("conv4_drop/mul:0", shape=(?, 2, 2, 512), dtype=float32)
+
+# Deconvolution
+# block 5
+deconv5 = {Tensor} Tensor("deconv5/conv2d_transpose:0", shape=(?, ?, ?, 512), dtype=float32)
+pconv5 = {Tensor} Tensor("pw5:0", shape=(?, ?, ?, 256), dtype=float32)
+
+# block 6
+deconv6 = {Tensor} Tensor("deconv6/conv2d_transpose:0", shape=(?, ?, ?, 256), dtype=float32)
+pconv6 = {Tensor} Tensor("pw6:0", shape=(?, ?, ?, 128), dtype=float32)
+
+# block 7
+deconv7 = {Tensor} Tensor("deconv7/conv2d_transpose:0", shape=(?, ?, ?, 128), dtype=float32)
+pconv7 = {Tensor} Tensor("pw7:0", shape=(?, ?, ?, 64), dtype=float32)
+
+# block 8
+deconv8 = {Tensor} Tensor("deconv8/conv2d_transpose:0", shape=(?, ?, ?, 64), dtype=float32)
+seg_result = {Tensor} Tensor("pw8:0", shape=(?, ?, ?, 16), dtype=float32)
+
+~~~~~~~
+segmentation_logits = {Tensor} Tensor("Reshape:0", shape=(?, 1024, 16), dtype=float32)
+~~~~~~~
+
+result_max = {Tensor} Tensor("ArgMax:0", shape=(?, ?, ?), dtype=int64)
+
+
+result_max_labels1 = {Tensor} Tensor("Reshape_1:0", shape=(?, 32, 32, 1), dtype=bool)
+result_max_labels2 = {Tensor} Tensor("Reshape_2:0", shape=(?, 32, 32, 1), dtype=bool)
+result_max_labels3 = {Tensor} Tensor("Reshape_3:0", shape=(?, 32, 32, 1), dtype=bool)
+result_max_labels4 = {Tensor} Tensor("Reshape_4:0", shape=(?, 32, 32, 1), dtype=bool)
+result_max_labels5 = {Tensor} Tensor("Reshape_5:0", shape=(?, 32, 32, 1), dtype=bool)
+result_max_labels6 = {Tensor} Tensor("Reshape_6:0", shape=(?, 32, 32, 1), dtype=bool)
+result_max_labels7 = {Tensor} Tensor("Reshape_7:0", shape=(?, 32, 32, 1), dtype=bool)
+result_max_labels8 = {Tensor} Tensor("Reshape_8:0", shape=(?, 32, 32, 1), dtype=bool)
+result_max_labels9 = {Tensor} Tensor("Reshape_9:0", shape=(?, 32, 32, 1), dtype=bool)
+result_max_labels10 = {Tensor} Tensor("Reshape_10:0", shape=(?, 32, 32, 1), dtype=bool)
+result_max_labels11 = {Tensor} Tensor("Reshape_11:0", shape=(?, 32, 32, 1), dtype=bool)
+result_max_labels12 = {Tensor} Tensor("Reshape_12:0", shape=(?, 32, 32, 1), dtype=bool)
+result_max_labels13 = {Tensor} Tensor("Reshape_13:0", shape=(?, 32, 32, 1), dtype=bool)
+result_max_labels14 = {Tensor} Tensor("Reshape_14:0", shape=(?, 32, 32, 1), dtype=bool)
+result_max_labels15 = {Tensor} Tensor("Reshape_15:0", shape=(?, 32, 32, 1), dtype=bool)
+
+
+result_max_labels = {Tensor} Tensor("concat:0", shape=(?, 32, 32, 15), dtype=bool)
+result_max_labels_flatten = {Tensor} Tensor("Cast:0", shape=(?, 1024, 15), dtype=float32)
+
+result_labels_count = {Tensor} Tensor("Reshape_17:0", shape=(?, 15), dtype=float32)
+
+max_idx = {Tensor} Tensor("add:0", shape=(?,), dtype=int64)
+
+result_max_final = {Tensor} Tensor("Equal_15:0", shape=(?, ?, ?), dtype=bool)
+
+result_max_result = {Tensor} Tensor("Cast_1:0", shape=(?, ?, ?), dtype=float32)
+
+
+~~~~~~~
+seg_predictions = {Tensor} Tensor("Reshape_18:0", shape=(?, 32, 32, 1), dtype=float32)
+~~~~~~~
+
+
+
+*******Training:
+train_rgb		<class 'tuple'>: (27000, 32, 32, 3)
+train_gt_mask		<class 'tuple'>: (27000, 1024, 16)
+train_gt_one_mask	<class 'tuple'>: (27000, 1024)
+test_rgb		<class 'tuple'>: (3000, 32, 32, 3)
+test_gt_mask		<class 'tuple'>: (3000, 1024, 16)
+test_gt_one_mask	<class 'tuple'>: (3000, 1024)
+
+
+num_epochs	100
+
+# __train_step
+rgb_batch	<class 'tuple'>: (32, 32, 32, 3)
+mask_batch	<class 'tuple'>: (32, 1024, 16)
+keep_prob_seg		1.0
+
+output		<class 'tuple'>: (32, 32, 32, 1)
+		max = 1.0
+		min = 0.0
+
+
+# __test_step
+test_rgb		<class 'tuple'>: (32, 32, 32, 3)
+test_gt_mask		<class 'tuple'>: (32, 1024, 16)
+keep_prob_seg		1.0
+
+prediction_mask	Tensor("Reshape_18:0", shape=(?, 32, 32, 1), dtype=float32)
+probabilities		Tensor("Softmax:0", shape=(?, 1024, 16), dtype=float32)
+cross_entropy_sum	Tensor("Sum_1:0", shape=(), dtype=float32)
+
+test_predict		<class 'tuple'>: (32, 32, 32, 1)
+test_prob		<class 'tuple'>: (32, 1024, 16)
+test_loss	=13872.354
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
