@@ -16,8 +16,8 @@ Exp["test"] = False
 
 Exp["debug_output"] = True
 
-Exp["log_path"] = "./logs/BOP_32x32_10.12/"
-Exp["log_file"] = "BOP_32x32_10.12"
+Exp["log_path"] = "./logs/BOP_32x32_10.14/"
+Exp["log_file"] = "BOP_32x32_10.14"
 
 # Keep empty to not restore a model / Change to "" if only train (train for the first time):
 # Exp["restore_file"] = ""
@@ -36,7 +36,7 @@ Exp["restore_file"] = ""
 
 
 Exp["quat_used"] = True  # set true, if the dataset contains quaternions. Otherwise false.
-Exp["plot_title"] = "BOP 32x32 RGB, 10.12"
+Exp["plot_title"] = "BOP 32x32 RGB, 10.14"
 Exp["label"] = "Experiment.py"
 
 
