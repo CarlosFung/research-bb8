@@ -87,22 +87,24 @@ class Experiment:
                          Xte_rgb, Yte_mask, Yte_pm, Yte_bb8, Yte_pose)
 
         # Testing
-        if self._descrip["eval"]:
-            solver.eval(Xte_rgb, Yte_mask, Yte_pose)
+        # if self._descrip["eval"]:
+        #     solver.eval(Xte_rgb, Yte_mask, Yte_pose)
 
         # Testing with a second test set.
         # i.e. Different datasets for training and validation.
         if self._descrip["test"] and len(self._descrip["test_dataset"]) > 0:
             loaded_eval_data = prepare_data_RGB_6DoF(self._descrip["test_dataset"])
-            Xev_rgb = loaded_eval_data[0]
-            Yev_mask = loaded_eval_data[1]
-            Yev_pm = loaded_eval_data[2]
-            Yev_pose = loaded_eval_data[3]
-            Yev_pose[:, 3:] = Quaternion.NormalizeList(Yev_pose[:, 3:])  # normalizes the quaternions Yev_pose[:, 3:]
-            Yev_bb8 = loaded_data[4]
+            rtest_rgb = loaded_eval_data[0]
+            rtest_mask = loaded_eval_data[1]
+            rtest_pm = loaded_eval_data[2]
+            rtest_pose = loaded_eval_data[3]
+            rtest_pose[:, 3:] = Quaternion.NormalizeList(rtest_pose[:, 3:])  # normalizes the quaternions Yev_pose[:, 3:]
+            rtest_bb8 = loaded_data[4]
+
+            solver.eval(rtest_rgb, rtest_mask, rtest_pm, rtest_bb8, rtest_pose)
 
             # swap colums for the quaternion from (x, y, z, w) -> (w, x, y, z)
-            solver.eval(Xev_rgb, Yev_mask, Yev_pose)
+            # solver.eval(Xev_rgb, Yev_mask, Yev_pose)
 
         # Analyze the results
         # ????????????????????????????????????????????????????????????????????????????????????????????

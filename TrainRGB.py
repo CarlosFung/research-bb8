@@ -5,6 +5,7 @@ import os
 from os import path
 from Model_BB8 import *
 from layers import *
+from datalog import *
 import cv2
 
 
@@ -86,6 +87,8 @@ class TrainRGB:
     saver = []
     saver_log_file = ""
     saver_log_folder = ""
+
+    mydatalog = 0
 
     # restore the model or train a new one
     restore_model = False
@@ -172,8 +175,8 @@ class TrainRGB:
         self.__start_train()
 
     # Start the evaluation of the current model.
-    def eval(self, test_rgb, test_gt_mask, test_gt_pose):
-        self.__start_eval(test_rgb, test_gt_mask, test_gt_pose)
+    def eval(self, rtest_rgb, rtest_mask, rtest_pm, rtest_bb8, rtest_pose):
+        self.__start_eval(rtest_rgb, rtest_mask, rtest_pm, rtest_bb8, rtest_pose)
 
 
     # Init the solver for the model.
@@ -235,6 +238,11 @@ class TrainRGB:
 
     # Start the training procedure.
     def __start_train(self):
+        # -------------------------------------------------------------------------------------
+        # Init file writer
+        self.mydatalog = Datalog()
+        self.mydatalog.StartLog(self.saver_log_folder)
+
         initop = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
         # start the session
         with tf.Session() as sess:
@@ -248,9 +256,10 @@ class TrainRGB:
             print("Start training")
             start_idx = sess.run('epoche:0') + 1
 
+            # i: 0~num_epochs-1
             for i in range(self.num_epochs):
                 # Count the steps manually
-                self.step = i + start_idx
+                self.step = i + start_idx  # step: 1~num_epochs, if this is a new model
                 assign_op = self.epoch.assign(i + start_idx)
                 sess.run(assign_op)
 
@@ -298,7 +307,7 @@ class TrainRGB:
                 train_bb8_loss_avg = train_bb8_loss_sum / train_cnt
 
                 # ---------------------------------------------------------------------------------
-                # Test accuracy
+                # Test accuracy/Cross-validation
                 test_indices = np.arange(len(self.test_rgb))
                 np.random.shuffle(test_indices)
                 test_indices = test_indices[0:self.test_size]
@@ -322,23 +331,97 @@ class TrainRGB:
                       ",Test BB8 Loss,", test_bb8_loss)
 
                 # Save and test all 10 iterations
-                if i % 10 == 0:
+                if self.step % 10 == 0:
                     self.saver.save(sess, self.saver_log_folder + self.saver_log_file, global_step=self.step)
                     print("Saved at step ", self.step)
 
+                self.mydatalog.AddData(self.step,
+                                       test_loss / (self.imgWidth * self.imgHeight),
+                                       test_precision, test_recall, test_accuracy,
+                                       test_bb8_loss)
+
             # save the last step
-            self.saver.save(sess, self.saver_log_folder + self.saver_log_file, global_step=self.step)
-            self.restore_from_file = self.saver_log_file + "-" + str(self.step) + ".meta"  # keeps the file so that the evaluation can restore the last model.
+            # self.saver.save(sess, self.saver_log_folder + self.saver_log_file, global_step=self.step)
+
+            # keeps the file so that the evaluation can restore the last model.
+            self.restore_from_file = self.saver_log_file + "-" + str(self.step) + ".meta"
 
 
     # Start the network evaluation.
-    def __start_eval(self, Xte_rgb, Yte_mask, Yte_pose):
+    def __start_eval(self, rtest_rgb, rtest_mask, rtest_pm, rtest_bb8, rtest_pose):
+        """
+        :param rtest_rgb: (array) Testing RGB data [N, width, height, 3]
+        :param rtest_mask: (array) Testing ground truth mask [N, width, height, C]
+        :param rtest_pm: (array) Testing target object ground truth mask [N, width, height]
+        :param rtest_bb8: (array) Testing ground truth bounding box 8 corners [N, 16]
+        :param rtest_pose: (array) Testing ground truth pose [x, y, z, qx, qy, qz, qw]
+        """
+
+        # Check if a model has been restored.
+        if len(self.restore_from_file) == 0:
+            print("ERROR - Test/Validation mode requires a restored model")
+            return
+
         initop = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
         # run the test session
         with tf.Session() as sess:
             sess.run(initop)
 
+            # Restore the graph
+            saver = tf.train.import_meta_graph(self.saver_log_folder + self.restore_from_file)
+            saver.restore(sess, tf.train.latest_checkpoint(self.saver_log_folder))
+            curr_epoch = sess.run('epoche:0')
+            print("Model restored at epoch ", curr_epoch)
 
+            print("Start testing/validation..........")
+            print("Num test samples: ", int(rtest_rgb.shape[0]), ".")
+
+            # split the evaluation batch in small chunks
+            # Note that the evaluation images are not shuffled to keep them aligned with the input images
+            # test_size = self.test_size
+            test_size = int(rtest_rgb.shape[0] / 9)
+            validation_batch = zip(range(0, len(rtest_rgb), test_size), range(test_size, len(rtest_rgb) + 1, test_size))
+
+            # run the batch
+            rtest_cnt = 0
+            rtest_precision_sum = 0
+            rtest_recall_sum = 0
+            rtest_accuracy_sum = 0
+            rtest_loss_sum = 0
+            rtest_bb8_loss_sum = 0
+            for start, end in validation_batch:
+                rtest_predict, rtest_prob, rtest_loss, rtest_bb8_loss = \
+                    self.__test_step(sess, rtest_rgb[start:end], rtest_mask[start:end],
+                                     rtest_bb8[start:end])
+                rtest_precision, rtest_recall, rtest_accuracy = self.__getAccuracy(rtest_pm[start:end], rtest_predict,
+                                                                                   "valid_accuracy_" + str(rtest_cnt)
+                                                                                   + ".csv")
+
+                rtest_precision_sum = rtest_precision_sum + rtest_precision
+                rtest_recall_sum = rtest_recall_sum + rtest_recall
+                rtest_accuracy_sum = rtest_accuracy_sum + rtest_accuracy
+                rtest_loss_sum = rtest_loss_sum + rtest_loss
+                rtest_bb8_loss_sum = rtest_bb8_loss_sum + rtest_bb8_loss
+                print("Batch,", rtest_cnt,
+                      ",Valid Seg Loss,", rtest_loss / (self.imgWidth * self.imgHeight),
+                      ",Valid Seg Precison,", rtest_precision,
+                      ",Valid Seg Recall,", rtest_recall,
+                      ",Valid Seg Accuracy,", rtest_accuracy,
+                      ",Valid BB8 Loss,", rtest_bb8_loss)
+                rtest_cnt = rtest_cnt + 1
+
+            rtest_precision_avg = rtest_precision_sum / rtest_cnt
+            rtest_recall_avg = rtest_recall_sum / rtest_cnt
+            rtest_accuracy_avg = rtest_accuracy_sum / rtest_cnt
+            rtest_loss_avg = rtest_loss_sum / rtest_cnt
+            rtest_bb8_loss_avg = rtest_bb8_loss_sum / rtest_cnt
+
+            print("Final results:\n",
+                  "Valid Seg Loss,", rtest_loss_avg / (self.imgWidth * self.imgHeight),
+                  ",Valid Seg Precison,", rtest_precision_avg,
+                  ",Valid Seg Recall,", rtest_recall_avg,
+                  ",Valid Seg Accuracy,", rtest_accuracy_avg,
+                  ",Valid BB8 Loss,", rtest_bb8_loss_avg)
 
 
     # Execute one training step for the entire graph
