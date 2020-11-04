@@ -20,12 +20,12 @@ class Experiment:
         # Load and prepare the data
         """
         The pickle contains a dict with the following labels:
-            Xtr_rgb  - the training data set, rgb images of shape (num_images, width, height, channels = 3), uint8 [0,255]
+            Xtr_rgb  - the training data set, rgb images of shape (num_images, height, width, channels = 3), uint8 [0,255]
             Ytr_mask - the training mask, each pixel in indicates the location of the object. [N, image h*w, c]
             Ytr_pm   - the training mask, target class only. [N, image h*w]
             Ytr_pose - the training poses of each object stored as (num_images, x, y, z, qx, qy, qz, qw)
             Ytr_bb8  - the training bounding box for each object stored as (num_images, x1, y1, x2, y2, ..., x8, y8)
-            Xte_rgb  - the test data set, rgb images of shape (num_images, width, height, channels = 3)
+            Xte_rgb  - the test data set, rgb images of shape (num_images, height, width, channels = 3)
             Yte_mask - the test mask, with each pixel indicating the location of the object. [N, image h*w, c]
             Yte_pm   - the test mask, target class only. [N, image h*w]
             Yte_pose - the test poses of each object stored as (num_images, x, y, z, qx, qy, qz, qw)
@@ -92,7 +92,7 @@ class Experiment:
 
         # Testing with a second test set.
         # i.e. Different datasets for training and validation.
-        if self._descrip["test"] and len(self._descrip["test_dataset"]) > 0:
+        if len(self._descrip["test_dataset"]) > 0:
             loaded_eval_data = prepare_data_RGB_6DoF(self._descrip["test_dataset"])
             rtest_rgb = loaded_eval_data[0]
             rtest_mask = loaded_eval_data[1]
@@ -101,10 +101,17 @@ class Experiment:
             rtest_pose[:, 3:] = Quaternion.NormalizeList(rtest_pose[:, 3:])  # normalizes the quaternions Yev_pose[:, 3:]
             rtest_bb8 = loaded_data[4]
 
-            solver.eval(rtest_rgb, rtest_mask, rtest_pm, rtest_bb8, rtest_pose)
+            if self._descrip["test"]:
+                solver.eval(rtest_rgb, rtest_mask, rtest_pm, rtest_bb8, rtest_pose)
 
-            # swap colums for the quaternion from (x, y, z, w) -> (w, x, y, z)
-            # solver.eval(Xev_rgb, Yev_mask, Yev_pose)
+
+        if self._descrip["quality_check"] > 0:
+            solver.setQualityCheck(self._descrip["quality_check"])
+            if len(self._descrip["quality_check_class_name"]) > 0:
+                solver.setQCClass(self._descrip["quality_check_class_name"])
+                solver.qualityCheck(rtest_rgb, rtest_mask, rtest_pm, rtest_bb8)
+            else:
+                solver.qualityCheck(Xtr_rgb, Ytr_mask, Ytr_pm, Ytr_bb8)
 
         # Analyze the results
         # ????????????????????????????????????????????????????????????????????????????????????????????

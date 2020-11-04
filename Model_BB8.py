@@ -27,13 +27,13 @@ class Model_BB8:
         self.number_BB_outputs = number_BB_outputs
 
     # Forward pass/Inference
-    # :param input_op: (array) Placeholder for RGB image input as array of size [N, width, height, 3]. Pixel range is [0, 255]
-    # :param seg_pred: (array) Placeholder to funnel the predictions from Stage 1 into Stage 2 of size [N, width, height, 1]
+    # :param input_op: (array) Placeholder for RGB image input as array of size [N, height, width, 3]. Pixel range is [0, 255]
+    # :param seg_pred: (array) Placeholder to funnel the predictions from Stage 1 into Stage 2 of size [N, height, width, 1]
     # :param keep_prob_seg: (float) Dropout, probability to keep the values. For stage 1 only.
     # :param keep_prob_pose_conv/keep_prob_pose_hidden: (float) Dropout, probability to keep the values, For stage 2 only.
     # :return: The three graph endpoints (tensorflow nodes)
     #         self.segmentation_logits - The activation outputs of stage 1 of size [N, width*height, C]
-    #         self.seg_predictions - The prediction output of stage 1 of size [N, width, height, C], each pixel contains a class label.
+    #         self.seg_predictions - The prediction output of stage 1 of size [N, height, width, C], each pixel contains a class label.
     #         self.BB8_coordinates - The bounding box corners prediction graph
     def inference_op(self, input_op, seg_pred, keep_prob_seg, keep_prob_pose_conv, keep_prob_pose_hidden):
         # upscale factor for the Deconvolution
@@ -118,7 +118,7 @@ class Model_BB8:
         # result_max_result: [N,128,128,1]
         result_max_result = tf.cast(result_max_labels, tf.float32)
         # self.seg_predictions: [N,128,128,1]
-        self.seg_predictions = tf.reshape(tensor=result_max_result, shape=(-1, width, height, 1))
+        self.seg_predictions = tf.reshape(tensor=result_max_result, shape=(-1, height, width, 1))
 
 
         # ------------------------------------------------------------------------

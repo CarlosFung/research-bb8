@@ -1,3 +1,4 @@
 .idea/
 __pycache__/
 logs/
+data/pickles_64x64/

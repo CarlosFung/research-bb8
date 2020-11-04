@@ -63,7 +63,7 @@ def mpool_op(input_op, name, kh, kw, dh, dw):
 
 # Upscales the weight values.
 def get_bilinear_filter(filter_shape, upscale_factor):
-    # filter_shape is [width, height, num_in_channels, num_out_channels]
+    # filter_shape is [height, width, num_in_channels, num_out_channels]
     kernel_size = filter_shape[1]
     # Centre location of the filter for which value is calculated
     if kernel_size % 2 == 1:
