@@ -1,3 +1,6 @@
+import sys
+sys.dont_write_bytecode = True
+
 from TrainRGB import *
 from loaders import *
 from quattool import *
@@ -92,26 +95,57 @@ class Experiment:
 
         # Testing with a second test set.
         # i.e. Different datasets for training and validation.
-        if len(self._descrip["test_dataset"]) > 0:
-            loaded_eval_data = prepare_data_RGB_6DoF(self._descrip["test_dataset"])
+        if len(self._descrip["test_dataset_folder"]) > 0:
+            loaded_eval_data = []
+            loaded_eval_files = os.listdir(self._descrip["test_dataset_folder"])
+            for file in loaded_eval_files:
+                if not os.path.isdir(file):
+                    loaded_eval_data_temp = prepare_data_RGB_6DoF(self._descrip["test_dataset_folder"] + "/" + file)
+                    if len(loaded_eval_data) == 0:
+                        loaded_eval_data = loaded_eval_data_temp
+                    else:
+                        loaded_eval_data[0] = np.concatenate((loaded_eval_data[0], loaded_eval_data_temp[0]), axis=0)
+                        loaded_eval_data[1] = np.concatenate((loaded_eval_data[1], loaded_eval_data_temp[1]), axis=0)
+                        loaded_eval_data[2] = np.concatenate((loaded_eval_data[2], loaded_eval_data_temp[2]), axis=0)
+                        loaded_eval_data[3] = np.concatenate((loaded_eval_data[3], loaded_eval_data_temp[3]), axis=0)
+                        loaded_eval_data[4] = np.concatenate((loaded_eval_data[4], loaded_eval_data_temp[4]), axis=0)
+                        loaded_eval_data[5] = np.concatenate((loaded_eval_data[5], loaded_eval_data_temp[5]), axis=0)
+                        loaded_eval_data[6] = np.concatenate((loaded_eval_data[6], loaded_eval_data_temp[6]), axis=0)
+                        loaded_eval_data[7] = np.concatenate((loaded_eval_data[7], loaded_eval_data_temp[7]), axis=0)
+                        loaded_eval_data[8] = np.concatenate((loaded_eval_data[8], loaded_eval_data_temp[8]), axis=0)
+                        loaded_eval_data[9] = np.concatenate((loaded_eval_data[9], loaded_eval_data_temp[9]), axis=0)
+
             rtest_rgb = loaded_eval_data[0]
             rtest_mask = loaded_eval_data[1]
             rtest_pm = loaded_eval_data[2]
             rtest_pose = loaded_eval_data[3]
             rtest_pose[:, 3:] = Quaternion.NormalizeList(rtest_pose[:, 3:])  # normalizes the quaternions Yev_pose[:, 3:]
-            rtest_bb8 = loaded_data[4]
+            rtest_bb8 = loaded_eval_data[4]
 
-            if self._descrip["test"]:
-                solver.eval(rtest_rgb, rtest_mask, rtest_pm, rtest_bb8, rtest_pose)
+            vtest_rgb = loaded_eval_data[5]
+            vtest_mask = loaded_eval_data[6]
+            vtest_pm = loaded_eval_data[7]
+            vtest_pose = loaded_eval_data[8]
+            vtest_pose[:, 3:] = Quaternion.NormalizeList(vtest_pose[:, 3:])  # normalizes the quaternions
+            vtest_bb8 = loaded_eval_data[9]
+
+        if self._descrip["test"]:
+            solver.eval(rtest_rgb, rtest_mask, rtest_pm, rtest_bb8, rtest_pose)
 
 
         if self._descrip["quality_check"] > 0:
             solver.setQualityCheck(self._descrip["quality_check"])
             if len(self._descrip["quality_check_class_name"]) > 0:
                 solver.setQCClass(self._descrip["quality_check_class_name"])
-                solver.qualityCheck(rtest_rgb, rtest_mask, rtest_pm, rtest_bb8)
+                if self._descrip["quality_check_dataset"] == "TRAIN":
+                    solver.qualityCheck(rtest_rgb, rtest_mask, rtest_pm, rtest_bb8)
+                if self._descrip["quality_check_dataset"] == "TEST":
+                    solver.qualityCheck(vtest_rgb, vtest_mask, vtest_pm, vtest_bb8)
             else:
-                solver.qualityCheck(Xtr_rgb, Ytr_mask, Ytr_pm, Ytr_bb8)
+                if self._descrip["quality_check_dataset"] == "TRAIN":
+                    solver.qualityCheck(Xtr_rgb, Ytr_mask, Ytr_pm, Ytr_bb8)
+                if self._descrip["quality_check_dataset"] == "TEST":
+                    solver.qualityCheck(Xte_rgb, Yte_mask, Yte_pm, Yte_bb8)
 
         # Analyze the results
         # ????????????????????????????????????????????????????????????????????????????????????????????

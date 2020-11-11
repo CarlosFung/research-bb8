@@ -2,3 +2,5 @@
 __pycache__/
 logs/
 data/pickles_64x64/
+data/64x64/
+data/32x32/

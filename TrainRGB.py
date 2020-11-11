@@ -1,3 +1,6 @@
+import sys
+sys.dont_write_bytecode = True
+
 import tensorflow as tf
 import numpy as np
 import pickle

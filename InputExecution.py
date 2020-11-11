@@ -1,10 +1,14 @@
+import sys
+sys.dont_write_bytecode = True
+
 from Experiment import *
 
 Exp = {}
 
-Exp["train_dataset_folder"] = "./data/pickles_32x32"
-# Exp["train_dataset_folder"] = "./data/pickles_64x64"
-Exp["test_dataset"] = "./data/pickles_32x32/01.pickle"
+Exp["train_dataset_folder"] = "./data/32x32/training"
+Exp["test_dataset_folder"] = "./data/32x32/testing"
+# Exp["train_dataset_folder"] = "./data/64x64/training"
+# Exp["test_dataset_folder"] = "./data/64x64/testing"
 
 Exp["solver"] = TrainRGB
 Exp["model"] = Model_BB8
@@ -17,8 +21,9 @@ Exp["eval"] = False  # cross-validation; no need to set to True, because already
 
 Exp["test"] = False  # testing
 
-Exp["quality_check"] = 1800  # 0/100/200/1800(=ALL) samples quality check (dataset with 2000 images, train:valid=9:1)
-Exp["quality_check_class_name"] = "01" # if "", use training dataset; ow, use testing dataset
+Exp["quality_check"] = 200  # 0/200/1800 samples quality check (dataset with 2000 images, train:valid=9:1)
+Exp["quality_check_dataset"] = "TEST"  #"TEST": Cross-validation Set, 200; "TRAIN": Training Set, 1800.
+Exp["quality_check_class_name"] = "01"  # if "", use training dataset with all classes; ow, use testing dataset
 
 Exp["debug_output"] = True
 
