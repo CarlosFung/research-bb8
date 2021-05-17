@@ -38,7 +38,9 @@ class Model_BB8:
     #         self.segmentation_logits - The activation outputs of stage 1 of size [N, width*height, C]
     #         self.seg_predictions - The prediction output of stage 1 of size [N, height, width, C], each pixel contains a class label.
     #         self.BB8_coordinates - The bounding box corners prediction graph
-    def inference_op(self, input_op, seg_pred, keep_prob_seg, keep_prob_pose_conv, keep_prob_pose_hidden):
+    def inference_op(self, input_op, seg_pred, keep_prob_seg,
+                     keep_prob_pose_conv, keep_prob_pose_hidden,
+                     phase_train):
         # upscale factor for the Deconvolution
         upscale = 2
 
@@ -133,28 +135,28 @@ class Model_BB8:
 
         # input: 16x16x3
         # block 1 -- outputs 8x8x64
-        conv11_1 = conv_op(pose_input_op, name="conv11_1", kh=3, kw=3, n_out=64, dh=1, dw=1)
-        conv11_2 = conv_op(conv11_1, name="conv11_2", kh=3, kw=3, n_out=64, dh=1, dw=1)
+        conv11_1 = conv_bn_op(pose_input_op, name="conv11_1", kh=3, kw=3, n_out=64, dh=1, dw=1, is_training=phase_train)
+        conv11_2 = conv_bn_op(conv11_1, name="conv11_2", kh=3, kw=3, n_out=64, dh=1, dw=1, is_training=phase_train)
         pool11 = mpool_op(conv11_2, name="pool11", kh=2, kw=2, dw=2, dh=2)
         conv11_drop = tf.nn.dropout(pool11, keep_prob_pose_conv, name="conv11_drop")
 
         # block 2 -- outputs 4x4x128
-        conv12_1 = conv_op(conv11_drop, name="conv12_1", kh=3, kw=3, n_out=128, dh=1, dw=1)
-        conv12_2 = conv_op(conv12_1, name="conv12_2", kh=3, kw=3, n_out=128, dh=1, dw=1)
+        conv12_1 = conv_bn_op(conv11_drop, name="conv12_1", kh=3, kw=3, n_out=128, dh=1, dw=1, is_training=phase_train)
+        conv12_2 = conv_bn_op(conv12_1, name="conv12_2", kh=3, kw=3, n_out=128, dh=1, dw=1, is_training=phase_train)
         pool12 = mpool_op(conv12_2, name="pool12", kh=2, kw=2, dh=2, dw=2)
         conv12_drop = tf.nn.dropout(pool12, keep_prob_pose_conv, name="conv12_drop")
 
         # block 3 -- outputs 2x2x256
-        conv13_1 = conv_op(conv12_drop, name="conv13_1", kh=3, kw=3, n_out=256, dh=1, dw=1)
-        conv13_2 = conv_op(conv13_1, name="conv13_2", kh=3, kw=3, n_out=256, dh=1, dw=1)
-        conv13_3 = conv_op(conv13_2, name="conv13_3", kh=3, kw=3, n_out=256, dh=1, dw=1)
+        conv13_1 = conv_bn_op(conv12_drop, name="conv13_1", kh=3, kw=3, n_out=256, dh=1, dw=1, is_training=phase_train)
+        conv13_2 = conv_bn_op(conv13_1, name="conv13_2", kh=3, kw=3, n_out=256, dh=1, dw=1, is_training=phase_train)
+        conv13_3 = conv_bn_op(conv13_2, name="conv13_3", kh=3, kw=3, n_out=256, dh=1, dw=1, is_training=phase_train)
         pool13 = mpool_op(conv13_3, name="pool13", kh=2, kw=2, dh=2, dw=2)
         conv13_drop = tf.nn.dropout(pool13, keep_prob_pose_conv, name="conv13_drop")
 
         # block 4 -- outputs 2x2x256
-        conv14_1 = conv_op(conv13_drop, name="conv14_1", kh=3, kw=3, n_out=256, dh=1, dw=1)
-        conv14_2 = conv_op(conv14_1, name="conv14_2", kh=3, kw=3, n_out=256, dh=1, dw=1)
-        conv14_3 = conv_op(conv14_2, name="conv14_3", kh=3, kw=3, n_out=256, dh=1, dw=1)
+        conv14_1 = conv_bn_op(conv13_drop, name="conv14_1", kh=3, kw=3, n_out=256, dh=1, dw=1, is_training=phase_train)
+        conv14_2 = conv_bn_op(conv14_1, name="conv14_2", kh=3, kw=3, n_out=256, dh=1, dw=1, is_training=phase_train)
+        conv14_3 = conv_bn_op(conv14_2, name="conv14_3", kh=3, kw=3, n_out=256, dh=1, dw=1, is_training=phase_train)
         pool14 = mpool_op(conv14_3, name="pool14", kh=2, kw=2, dh=2, dw=2)
         conv14_drop = tf.nn.dropout(pool14, keep_prob_pose_conv, name="conv14_drop")
 

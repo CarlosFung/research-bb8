@@ -42,6 +42,9 @@ class Experiment:
         loaded_data = []
         loaded_files = os.listdir(self._descrip["train_dataset_folder"])
         for file in loaded_files:
+            if self._descrip["load_single_class"]:
+                if file[0:2] != self._descrip["single_class_name"]:
+                    continue
             if not os.path.isdir(file):
                 loaded_data_temp = prepare_data_RGB_6DoF(self._descrip["train_dataset_folder"]+"/"+file)
                 if len(loaded_data) == 0:
@@ -99,6 +102,9 @@ class Experiment:
             loaded_eval_data = []
             loaded_eval_files = os.listdir(self._descrip["test_dataset_folder"])
             for file in loaded_eval_files:
+                if self._descrip["load_single_class"]:
+                    if file[0:2] != self._descrip["single_class_name"]:
+                        continue
                 if not os.path.isdir(file):
                     loaded_eval_data_temp = prepare_data_RGB_6DoF(self._descrip["test_dataset_folder"] + "/" + file)
                     if len(loaded_eval_data) == 0:
@@ -135,13 +141,17 @@ class Experiment:
 
         if self._descrip["quality_check"] > 0:
             solver.setQualityCheck(self._descrip["quality_check"])
-            if len(self._descrip["quality_check_class_name"]) > 0:
-                solver.setQCClass(self._descrip["quality_check_class_name"])
+            if len(self._descrip["single_class_name"]) > 0:
+                solver.setQCClass(self._descrip["single_class_name"])
+
+            if self._descrip["quality_check_use_test_dataset"]:
+                # Using the second test set Exp["test_dataset_folder"]
                 if self._descrip["quality_check_dataset"] == "TRAIN":
                     solver.qualityCheck(rtest_rgb, rtest_mask, rtest_pm, rtest_bb8)
                 if self._descrip["quality_check_dataset"] == "TEST":
                     solver.qualityCheck(vtest_rgb, vtest_mask, vtest_pm, vtest_bb8)
             else:
+                # Using the default training dataset Exp["train_dataset_folder"]
                 if self._descrip["quality_check_dataset"] == "TRAIN":
                     solver.qualityCheck(Xtr_rgb, Ytr_mask, Ytr_pm, Ytr_bb8)
                 if self._descrip["quality_check_dataset"] == "TEST":

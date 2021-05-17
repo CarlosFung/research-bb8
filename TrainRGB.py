@@ -56,6 +56,9 @@ class TrainRGB:
     keep_prob_pose_conv = []
     keep_prob_pose_hidden = []
 
+    # Batch normalization
+    phase_train = []  # training stage or not
+
     # References to data
     # All those variables point to the data location
     train_rgb = []     # Training RGB data
@@ -149,13 +152,17 @@ class TrainRGB:
         self.keep_prob_pose_conv = tf.placeholder("float", name="keep_prob_pose_conv")
         self.keep_prob_pose_hidden = tf.placeholder("float", name="keep_prob_pose_hidden")
 
+        # Batch normalization. Indicate if it is training stage or not
+        self.phase_train = tf.placeholder(tf.bool, name='phase_train')
+
         # This solver will create its own instance of the model
         self.model = self.model_cls(self.number_classes, self.num_BB8_outputs)
 
         # [N,128x128,16]       [N,128,128,1]   [N,16], i.e.(x1,y1,x2,y2,...,x8,y8)
         self.pre_logits, self.seg_predictions, self.pre_bb8 = \
             self.model.inference_op(self.ph_rgb, self.ph_seg_pred, self.keep_prob_seg,
-                                    self.keep_prob_pose_conv, self.keep_prob_pose_hidden)
+                                    self.keep_prob_pose_conv, self.keep_prob_pose_hidden,
+                                    self.phase_train)
 
         # solver
         self.__initSolver__()
@@ -299,9 +306,7 @@ class TrainRGB:
                                           self.train_gt_mask[train_indices],
                                           self.train_gt_one_mask_m[train_indices],
                                           self.train_gt_bb8[train_indices],
-                                          self.train_gt_one_mask[train_indices],
-                                          1.0, 1.0, 1.0)
-                                          # 0.8)
+                                          1.0, 0.9, 0.9, True)
 
                     train_precision, train_recall, train_accuracy = self.__getAccuracy(self.train_gt_one_mask[train_indices],
                                                                                        train_predict,
@@ -557,22 +562,25 @@ class TrainRGB:
 
 
     # Execute one training step for the entire graph
-    def __train_step(self, sess, epoch_num, rgb_batch, mask_batch, pm_m_batch, bb8_batch, mask_batch_gt,
-                     keep_prob_seg, keep_prob_pose_conv, keep_prob_pose_hidden):
+    def __train_step(self, sess, epoch_num, rgb_batch, mask_batch, pm_m_batch, bb8_batch,
+                     keep_prob_seg, keep_prob_pose_conv, keep_prob_pose_hidden, phase_train):
         # Train the first stage.
         sess.run(self.train_seg, feed_dict={self.ph_rgb: rgb_batch,
                                             self.ph_mask: mask_batch,
-                                            self.keep_prob_seg: keep_prob_seg})
+                                            self.keep_prob_seg: keep_prob_seg,
+                                            self.phase_train: phase_train})
         train_prob, train_loss = sess.run([self.probabilities,
                                            self.cross_entropy_sum],
                                           feed_dict={self.ph_rgb: rgb_batch,
                                                      self.ph_mask: mask_batch,
-                                                     self.keep_prob_seg: keep_prob_seg})
+                                                     self.keep_prob_seg: keep_prob_seg,
+                                                     self.phase_train: phase_train})
 
         # Generate the output from the first stage - predicted mask.
         output = sess.run(self.seg_predictions, feed_dict={self.ph_rgb: rgb_batch,
                                                            self.ph_mask: mask_batch,
-                                                           self.keep_prob_seg: keep_prob_seg})
+                                                           self.keep_prob_seg: keep_prob_seg,
+                                                           self.phase_train: phase_train})
 
         # Train the second stage.
         if epoch_num > 30:
@@ -580,37 +588,43 @@ class TrainRGB:
                                                 self.ph_rgb: rgb_batch,
                                                 self.ph_gt_bb8: bb8_batch,
                                                 self.keep_prob_pose_conv: keep_prob_pose_conv,
-                                                self.keep_prob_pose_hidden: keep_prob_pose_hidden})
+                                                self.keep_prob_pose_hidden: keep_prob_pose_hidden,
+                                                self.phase_train: phase_train})
             # Calculate bb8 loss.
             train_bb8_loss = sess.run(self.loss_bb8, feed_dict={self.ph_seg_pred: output,
                                                                 self.ph_rgb: rgb_batch,
                                                                 self.ph_gt_bb8: bb8_batch,
                                                                 self.keep_prob_pose_conv: keep_prob_pose_conv,
-                                                                self.keep_prob_pose_hidden: keep_prob_pose_hidden})
+                                                                self.keep_prob_pose_hidden: keep_prob_pose_hidden,
+                                                                self.phase_train: phase_train})
 
             # Generate the output from the second stage - predicted bb8.
             output_bb8 = sess.run(self.pre_bb8, feed_dict={self.ph_seg_pred: output,
                                                            self.ph_rgb: rgb_batch,
                                                            self.keep_prob_pose_conv: keep_prob_pose_conv,
-                                                           self.keep_prob_pose_hidden: keep_prob_pose_hidden})
+                                                           self.keep_prob_pose_hidden: keep_prob_pose_hidden,
+                                                           self.phase_train: phase_train})
         else:  # epoch_num <= 30:
             sess.run(self.train_bb8, feed_dict={self.ph_seg_pred: pm_m_batch,
                                                 self.ph_rgb: rgb_batch,
                                                 self.ph_gt_bb8: bb8_batch,
                                                 self.keep_prob_pose_conv: keep_prob_pose_conv,
-                                                self.keep_prob_pose_hidden: keep_prob_pose_hidden})
+                                                self.keep_prob_pose_hidden: keep_prob_pose_hidden,
+                                                self.phase_train: phase_train})
             # Calculate bb8 loss.
             train_bb8_loss = sess.run(self.loss_bb8, feed_dict={self.ph_seg_pred: pm_m_batch,
                                                                 self.ph_rgb: rgb_batch,
                                                                 self.ph_gt_bb8: bb8_batch,
                                                                 self.keep_prob_pose_conv: keep_prob_pose_conv,
-                                                                self.keep_prob_pose_hidden: keep_prob_pose_hidden})
+                                                                self.keep_prob_pose_hidden: keep_prob_pose_hidden,
+                                                                self.phase_train: phase_train})
 
             # Generate the output from the second stage - predicted bb8.
             output_bb8 = sess.run(self.pre_bb8, feed_dict={self.ph_seg_pred: pm_m_batch,
                                                            self.ph_rgb: rgb_batch,
                                                            self.keep_prob_pose_conv: keep_prob_pose_conv,
-                                                           self.keep_prob_pose_hidden: keep_prob_pose_hidden})
+                                                           self.keep_prob_pose_hidden: keep_prob_pose_hidden,
+                                                           self.phase_train: phase_train})
 
         # Shows an RGB image, the segmentation output and its predicted bb8.
         if self.show_sample:
@@ -730,12 +744,14 @@ class TrainRGB:
                                                        self.cross_entropy_sum],
                                                       feed_dict={self.ph_rgb: test_rgb,
                                                                  self.ph_mask: test_gt_mask,
-                                                                 self.keep_prob_seg: 1.0})
+                                                                 self.keep_prob_seg: 1.0,
+                                                                 self.phase_train: False})
 
         # Generate the output from the first stage. These are the images with argmax(activations) applied
         output = sess.run(self.seg_predictions, feed_dict={self.ph_rgb: test_rgb,
                                                            self.ph_mask: test_gt_mask,
-                                                           self.keep_prob_seg: 1.0})
+                                                           self.keep_prob_seg: 1.0,
+                                                           self.phase_train: False})
 
         # Calculate bb8 loss.
         if epoch_num > 30:
@@ -743,13 +759,15 @@ class TrainRGB:
                                                                self.ph_rgb: test_rgb,
                                                                self.ph_gt_bb8: test_gt_bb8,
                                                                self.keep_prob_pose_conv: 1.0,
-                                                               self.keep_prob_pose_hidden: 1.0})
+                                                               self.keep_prob_pose_hidden: 1.0,
+                                                               self.phase_train: False})
         else:  # epoch_num <= 30:
             test_bb8_loss = sess.run(self.loss_bb8, feed_dict={self.ph_seg_pred: test_gt_pm_m,
                                                                self.ph_rgb: test_rgb,
                                                                self.ph_gt_bb8: test_gt_bb8,
                                                                self.keep_prob_pose_conv: 1.0,
-                                                               self.keep_prob_pose_hidden: 1.0})
+                                                               self.keep_prob_pose_hidden: 1.0,
+                                                               self.phase_train: False})
 
         return test_predict, test_prob, test_loss, test_bb8_loss
 
@@ -773,12 +791,14 @@ class TrainRGB:
                                                  self.cross_entropy_sum],
                                                 feed_dict={self.ph_rgb: qc_rgb,
                                                            self.ph_mask: qc_gt_mask,
-                                                           self.keep_prob_seg: 1.0})
+                                                           self.keep_prob_seg: 1.0,
+                                                           self.phase_train: False})
 
         # Generate the output from the first stage. These are the images with argmax(activations) applied
         output = sess.run(self.seg_predictions, feed_dict={self.ph_rgb: qc_rgb,
                                                            self.ph_mask: qc_gt_mask,
-                                                           self.keep_prob_seg: 1.0})
+                                                           self.keep_prob_seg: 1.0,
+                                                           self.phase_train: False})
 
         # Calculate bb8 loss.
         if epoch_num > 30:
@@ -786,26 +806,30 @@ class TrainRGB:
                                                              self.ph_rgb: qc_rgb,
                                                              self.ph_gt_bb8: qc_gt_bb8,
                                                              self.keep_prob_pose_conv: 1.0,
-                                                             self.keep_prob_pose_hidden: 1.0})
+                                                             self.keep_prob_pose_hidden: 1.0,
+                                                             self.phase_train: False})
 
             # Generate the output from the second stage - predicted bb8.
             output_bb8 = sess.run(self.pre_bb8, feed_dict={self.ph_seg_pred: output,
                                                            self.ph_rgb: qc_rgb,
                                                            self.keep_prob_pose_conv: 1.0,
-                                                           self.keep_prob_pose_hidden: 1.0})
+                                                           self.keep_prob_pose_hidden: 1.0,
+                                                           self.phase_train: False})
 
         else:  # epoch_num <= 30:
             qc_bb8_loss = sess.run(self.loss_bb8, feed_dict={self.ph_seg_pred: qc_gt_pm_m,
                                                              self.ph_rgb: qc_rgb,
                                                              self.ph_gt_bb8: qc_gt_bb8,
                                                              self.keep_prob_pose_conv: 1.0,
-                                                             self.keep_prob_pose_hidden: 1.0})
+                                                             self.keep_prob_pose_hidden: 1.0,
+                                                             self.phase_train: False})
 
             # Generate the output from the second stage - predicted bb8.
             output_bb8 = sess.run(self.pre_bb8, feed_dict={self.ph_seg_pred: qc_gt_pm_m,
                                                            self.ph_rgb: qc_rgb,
                                                            self.keep_prob_pose_conv: 1.0,
-                                                           self.keep_prob_pose_hidden: 1.0})
+                                                           self.keep_prob_pose_hidden: 1.0,
+                                                           self.phase_train: False})
 
         # Shows an RGB image, the segmentation output and its predicted bb8.
         if self.show_sample:
